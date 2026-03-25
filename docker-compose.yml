@@ -1,0 +1,54 @@
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: ems-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: ems_db
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - ems-network
+
+  mongo-express:
+    image: mongo-express:latest
+    container_name: ems-mongo-express
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_SERVER: mongodb
+      ME_CONFIG_MONGODB_PORT: 27017
+      ME_CONFIG_BASICAUTH_USERNAME: admin
+      ME_CONFIG_BASICAUTH_PASSWORD: admin123
+    depends_on:
+      - mongodb
+    networks:
+      - ems-network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ems-backend
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATA_MONGODB_URI: mongodb://mongodb:27017/ems_db
+      SERVER_PORT: 8080
+    depends_on:
+      - mongodb
+    networks:
+      - ems-network
+
+volumes:
+  mongo_data:
+    name: ems_mongo_data
+
+networks:
+  ems-network:
+    name: ems-network
+    driver: bridge

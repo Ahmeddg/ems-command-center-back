@@ -1,0 +1,18 @@
+package com.example.ems_command_center.model;
+
+import java.util.List;
+
+public record DispatchAssignmentResponse(
+    String incidentId,
+    String incidentTitle,
+    String vehicleId,
+    String vehicleName,
+    String dispatcher,
+    String notes,
+    String vehicleStatus,
+    String incidentStatus,
+    String dispatchedAt,
+    List<String> incidentTags,
+    AmbulanceRouteResponse route
+) {
+}

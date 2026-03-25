@@ -1,0 +1,236 @@
+package com.example.ems_command_center.seeder;
+
+import com.example.ems_command_center.model.*;
+import com.example.ems_command_center.repository.*;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+
+@Component
+@ConditionalOnProperty(name = "app.seed.enabled", havingValue = "true", matchIfMissing = true)
+public class DataSeeder implements ApplicationRunner {
+
+    private static final Logger log = LoggerFactory.getLogger(DataSeeder.class);
+
+    private final IncidentRepository incidentRepository;
+    private final FacilityRepository facilityRepository;
+    private final VehicleRepository vehicleRepository;
+    private final ReportRepository reportRepository;
+    private final PersonnelRepository personnelRepository;
+    private final UserProfileRepository userProfileRepository;
+    private final AnalyticsRepository analyticsRepository;
+
+    public DataSeeder(
+        IncidentRepository incidentRepository,
+        FacilityRepository facilityRepository,
+        VehicleRepository vehicleRepository,
+        ReportRepository reportRepository,
+        PersonnelRepository personnelRepository,
+        UserProfileRepository userProfileRepository,
+        AnalyticsRepository analyticsRepository
+    ) {
+        this.incidentRepository = incidentRepository;
+        this.facilityRepository = facilityRepository;
+        this.vehicleRepository = vehicleRepository;
+        this.reportRepository = reportRepository;
+        this.personnelRepository = personnelRepository;
+        this.userProfileRepository = userProfileRepository;
+        this.analyticsRepository = analyticsRepository;
+    }
+
+    @Override
+    public void run(ApplicationArguments args) {
+        seedIncidents();
+        seedFacilities();
+        seedVehicles();
+        seedReports();
+        seedPersonnel();
+        seedUserProfiles();
+        seedAnalytics();
+        log.info("✅ EMS Command Center — database seeding complete.");
+    }
+
+    private void seedIncidents() {
+        if (incidentRepository.count() > 0) return;
+        incidentRepository.saveAll(List.of(
+            new Incident(null, "MVA - Multi Vehicle Collision",
+                "Avenue Habib Bourguiba, Tunis",
+                new Coordinates(36.8065, 10.1815),
+                "4m ago", "urgent",
+                Arrays.asList("AMB-104 En Route", "PD Notified"),
+                "Active", 1),
+            new Incident(null, "Cardiac Distress",
+                "Rue de Marseille, Tunis",
+                new Coordinates(36.8165, 10.1915),
+                "12m ago", "normal",
+                Arrays.asList("Patient Onboard"),
+                "Transporting", 2)
+        ));
+        log.info("Seeded incidents collection.");
+    }
+
+    private void seedFacilities() {
+        if (facilityRepository.count() > 0) return;
+        // Overview facilities (no facilityType — general view)
+        Facility f1 = new Facility(null, "Charles Nicolle Hospital", "CRITICAL (96%)",
+            "04", "2.4", "error", 96,
+            new Coordinates(36.7965, 10.1715), null,
+            null, null, 0, 0, null);
+
+        Facility f2 = new Facility(null, "Military Hospital of Tunis", "STABLE (64%)",
+            "42", "5.1", "success", 64,
+            new Coordinates(36.8265, 10.2015), null,
+            null, null, 0, 0, null);
+
+        Facility f3 = new Facility(null, "Rabta Hospital", "BUSY (81%)",
+            "12", "3.8", "warning", 81,
+            new Coordinates(36.7865, 10.1615), null,
+            null, null, 0, 0, null);
+
+        // Hospital-specific entries (have facilityType set)
+        List<Equipment> eq1 = List.of(
+            new Equipment("EQ-001", "Ventilator", "functional", "2023-10-20", 15),
+            new Equipment("EQ-002", "MRI Scanner", "functional", "2023-10-15", 2),
+            new Equipment("EQ-003", "Defibrillator", "needs-maintenance", "2023-09-10", 8)
+        );
+        Facility h1 = new Facility(null, "St. Jude Medical Center", "CRITICAL (84%)",
+            "12", "1.5", "error", 84,
+            new Coordinates(36.8100, 10.1800), eq1,
+            "Level 1 Trauma", "14 min", 84, 100, "error");
+
+        List<Equipment> eq2 = List.of(
+            new Equipment("EQ-004", "X-Ray Machine", "functional", "2023-10-18", 4),
+            new Equipment("EQ-005", "ECG Monitor", "functional", "2023-10-22", 20)
+        );
+        Facility h2 = new Facility(null, "Central City General", "STABLE (43%)",
+            "38", "3.2", "success", 43,
+            new Coordinates(36.7900, 10.1700), eq2,
+            "Specialist Hub", "42 min", 52, 120, "primary");
+
+        List<Equipment> eq3 = List.of(
+            new Equipment("EQ-006", "CT Scanner", "out-of-service", "2023-10-05", 1)
+        );
+        Facility h3 = new Facility(null, "Northside Memorial", "BUSY (83%)",
+            "6", "4.0", "warning", 83,
+            new Coordinates(36.8300, 10.2100), eq3,
+            "Level 2 Trauma", "28 min", 91, 110, "primary");
+
+        facilityRepository.saveAll(List.of(f1, f2, f3, h1, h2, h3));
+        log.info("Seeded facilities collection.");
+    }
+
+    private void seedVehicles() {
+        if (vehicleRepository.count() > 0) return;
+        vehicleRepository.saveAll(List.of(
+            new Vehicle("UNIT-704", "AMB-104", "busy", "ambulance",
+                new Coordinates(36.8065, 10.1815),
+                Arrays.asList("M. Ben Ali", "S. Trabelsi"), "2m ago",
+                List.of(
+                    new Equipment("VEQ-001", "Portable Ventilator", "functional", "2023-10-24", 1),
+                    new Equipment("VEQ-002", "Stretcher", "functional", "2023-10-24", 1),
+                    new Equipment("VEQ-003", "Oxygen Tank", "functional", "2023-10-24", 2)
+                )),
+            new Vehicle("UNIT-912", "AMB-202", "available", "ambulance",
+                new Coordinates(36.8165, 10.1715),
+                Arrays.asList("A. Mansour"), "5m ago",
+                List.of(
+                    new Equipment("VEQ-004", "Defibrillator", "functional", "2023-10-23", 1)
+                )),
+            new Vehicle("UNIT-402", "SUP-01", "busy", "supervisor",
+                new Coordinates(36.7965, 10.1915),
+                Arrays.asList("B. Gammarth"), "10m ago",
+                List.of(
+                    new Equipment("VEQ-005", "Radio Comms", "functional", "2023-10-20", 2)
+                ))
+        ));
+        log.info("Seeded vehicles collection.");
+    }
+
+    private void seedReports() {
+        if (reportRepository.count() > 0) return;
+        reportRepository.saveAll(List.of(
+            new Report(null, "Monthly_Response_Audit_Oct.pdf", "Operational Analytics", "Oct 31, 2023", "Ready"),
+            new Report(null, "Critical_Incident_Review_Q3.xlsx", "Clinical Review", "Oct 28, 2023", "Ready"),
+            new Report(null, "Fleet_Maintenance_Log_2023.pdf", "Resources", "Oct 25, 2023", "Archived")
+        ));
+        log.info("Seeded reports collection.");
+    }
+
+    private void seedPersonnel() {
+        if (personnelRepository.count() > 0) return;
+        personnelRepository.saveAll(List.of(
+            new Personnel("EMS-44291", "Dr. Sarah Chen", "sarah.chen@ems-ops.com",
+                "Administrator", "Active Now", "success", "ShieldCheck",
+                "bg-primary-container text-white"),
+            new Personnel("EMS-99102", "Marcus Thorne", "m.thorne@ems-ops.com",
+                "Dispatcher", "Active Now", "success", "Headphones",
+                "bg-surface-container-highest text-on-surface"),
+            new Personnel("EMS-88273", "James Wilson", "j.wilson@ems-ops.com",
+                "Driver / EMT", "Off Duty", "normal", "Ambulance",
+                "bg-surface-container text-on-surface-variant"),
+            new Personnel("EMS-22104", "Elena Rodriguez", "e.rod@ems-ops.com",
+                "Lead Paramedic", "Emergency Call", "urgent", "FileText",
+                "bg-tertiary-container text-white")
+        ));
+        log.info("Seeded personnel collection.");
+    }
+
+    private void seedUserProfiles() {
+        if (userProfileRepository.count() > 0) return;
+        UserProfile profile = new UserProfile(
+            "EMS-9421-CMO",
+            "Dr. Sarah Jenkins",
+            "Chief Medical Officer",
+            "s.jenkins@ems-command.gov",
+            "+1 (555) 942-1084",
+            "Central Command Hub, Sector 4",
+            "Jan 2018",
+            "Emergency Trauma & Critical Care",
+            List.of(
+                new UserStat("Incidents Managed", "1,284", "Activity", "text-primary"),
+                new UserStat("Avg. Response Time", "06:12", "Clock", "text-tertiary"),
+                new UserStat("Reports Approved", "482", "FileText", "text-secondary")
+            )
+        );
+        userProfileRepository.save(profile);
+        log.info("Seeded users collection.");
+    }
+
+    private void seedAnalytics() {
+        if (analyticsRepository.count() > 0) return;
+
+        Analytics dispatch = new Analytics(null, "dispatch_volume", List.of(
+            Map.of("time", "08:00", "volume", 12),
+            Map.of("time", "09:00", "volume", 18),
+            Map.of("time", "10:00", "volume", 22),
+            Map.of("time", "11:00", "volume", 15),
+            Map.of("time", "12:00", "volume", 30),
+            Map.of("time", "13:00", "volume", 25),
+            Map.of("time", "14:00", "volume", 20),
+            Map.of("time", "15:00", "volume", 28),
+            Map.of("time", "16:00", "volume", 18),
+            Map.of("time", "17:00", "volume", 24),
+            Map.of("time", "18:00", "volume", 20)
+        ));
+
+        Analytics response = new Analytics(null, "response_time", List.of(
+            Map.of("day", "Mon", "arrival", 150, "dispatch", 120),
+            Map.of("day", "Tue", "arrival", 140, "dispatch", 110),
+            Map.of("day", "Wed", "arrival", 100, "dispatch", 90),
+            Map.of("day", "Thu", "arrival", 120, "dispatch", 100),
+            Map.of("day", "Fri", "arrival", 110, "dispatch", 95),
+            Map.of("day", "Sat", "arrival", 60, "dispatch", 50),
+            Map.of("day", "Sun", "arrival", 80, "dispatch", 70)
+        ));
+
+        analyticsRepository.saveAll(List.of(dispatch, response));
+        log.info("Seeded analytics collection.");
+    }
+}
