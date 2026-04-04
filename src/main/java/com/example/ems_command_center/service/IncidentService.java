@@ -30,6 +30,7 @@ public class IncidentService {
     public Incident createIncident(Incident incident) {
         Incident savedIncident = incidentRepository.save(withTimestamp(incident, null));
         publishEvent("CREATED", savedIncident);
+        publishHospitalManagerEvent("NEW_INCIDENT", savedIncident);
         return savedIncident;
     }
 
@@ -39,6 +40,7 @@ public class IncidentService {
 
         Incident updatedIncident = incidentRepository.save(withTimestamp(incident, existing));
         publishEvent("UPDATED", updatedIncident);
+        publishHospitalManagerEvent("INCIDENT_UPDATED", updatedIncident);
         return updatedIncident;
     }
 
@@ -48,6 +50,7 @@ public class IncidentService {
 
         incidentRepository.delete(existing);
         publishEvent("DELETED", existing);
+        publishHospitalManagerEvent("INCIDENT_DELETED", existing);
     }
 
     public long countByStatus(String status) {
@@ -75,6 +78,13 @@ public class IncidentService {
     private void publishEvent(String action, Incident incident) {
         messagingTemplate.convertAndSend(
             "/topic/incidents",
+            new IncidentEvent(action, incident.id(), incident)
+        );
+    }
+
+    private void publishHospitalManagerEvent(String action, Incident incident) {
+        messagingTemplate.convertAndSend(
+            "/topic/hospital-manager/incidents",
             new IncidentEvent(action, incident.id(), incident)
         );
     }

@@ -9,6 +9,7 @@ import com.example.ems_command_center.model.Vehicle;
 import com.example.ems_command_center.repository.IncidentRepository;
 import com.example.ems_command_center.repository.VehicleRepository;
 import org.springframework.http.HttpStatus;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -24,10 +25,16 @@ public class DispatchService {
 
     private final VehicleRepository vehicleRepository;
     private final IncidentRepository incidentRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
-    public DispatchService(VehicleRepository vehicleRepository, IncidentRepository incidentRepository) {
+    public DispatchService(
+        VehicleRepository vehicleRepository,
+        IncidentRepository incidentRepository,
+        SimpMessagingTemplate messagingTemplate
+    ) {
         this.vehicleRepository = vehicleRepository;
         this.incidentRepository = incidentRepository;
+        this.messagingTemplate = messagingTemplate;
     }
 
     public List<Vehicle> getAvailableAmbulances() {
@@ -92,7 +99,7 @@ public class DispatchService {
         vehicleRepository.save(dispatchedVehicle);
         incidentRepository.save(updatedIncident);
 
-        return new DispatchAssignmentResponse(
+        DispatchAssignmentResponse response = new DispatchAssignmentResponse(
             updatedIncident.id(),
             updatedIncident.title(),
             dispatchedVehicle.id(),
@@ -105,6 +112,9 @@ public class DispatchService {
             updatedIncident.tags(),
             route
         );
+
+        publishDispatchNotifications(response);
+        return response;
     }
 
     private Vehicle getVehicle(String vehicleId) {
@@ -189,5 +199,11 @@ public class DispatchService {
 
     private double round(double value) {
         return Math.round(value * 100.0) / 100.0;
+    }
+
+    private void publishDispatchNotifications(DispatchAssignmentResponse response) {
+        messagingTemplate.convertAndSend("/topic/drivers/dispatches", response);
+        messagingTemplate.convertAndSend("/topic/drivers/" + response.vehicleId() + "/dispatches", response);
+        messagingTemplate.convertAndSend("/topic/hospital-manager/dispatches", response);
     }
 }

@@ -26,6 +26,10 @@ public class DataSeeder implements ApplicationRunner {
     private final PersonnelRepository personnelRepository;
     private final UserProfileRepository userProfileRepository;
     private final AnalyticsRepository analyticsRepository;
+    private final HospitalPatientRepository hospitalPatientRepository;
+    private final BedAvailabilityRepository bedAvailabilityRepository;
+    private final MedicalResourceRepository medicalResourceRepository;
+    private final MedicalStaffRepository medicalStaffRepository;
 
     public DataSeeder(
         IncidentRepository incidentRepository,
@@ -34,7 +38,11 @@ public class DataSeeder implements ApplicationRunner {
         ReportRepository reportRepository,
         PersonnelRepository personnelRepository,
         UserProfileRepository userProfileRepository,
-        AnalyticsRepository analyticsRepository
+        AnalyticsRepository analyticsRepository,
+        HospitalPatientRepository hospitalPatientRepository,
+        BedAvailabilityRepository bedAvailabilityRepository,
+        MedicalResourceRepository medicalResourceRepository,
+        MedicalStaffRepository medicalStaffRepository
     ) {
         this.incidentRepository = incidentRepository;
         this.facilityRepository = facilityRepository;
@@ -43,6 +51,10 @@ public class DataSeeder implements ApplicationRunner {
         this.personnelRepository = personnelRepository;
         this.userProfileRepository = userProfileRepository;
         this.analyticsRepository = analyticsRepository;
+        this.hospitalPatientRepository = hospitalPatientRepository;
+        this.bedAvailabilityRepository = bedAvailabilityRepository;
+        this.medicalResourceRepository = medicalResourceRepository;
+        this.medicalStaffRepository = medicalStaffRepository;
     }
 
     @Override
@@ -54,6 +66,7 @@ public class DataSeeder implements ApplicationRunner {
         seedPersonnel();
         seedUserProfiles();
         seedAnalytics();
+        seedHospitalManagerData();
         log.info("✅ EMS Command Center — database seeding complete.");
     }
 
@@ -232,5 +245,97 @@ public class DataSeeder implements ApplicationRunner {
 
         analyticsRepository.saveAll(List.of(dispatch, response));
         log.info("Seeded analytics collection.");
+    }
+
+    private void seedHospitalManagerData() {
+        if (hospitalPatientRepository.count() == 0) {
+            hospitalPatientRepository.saveAll(List.of(
+                new HospitalPatient(
+                    null,
+                    "PT-2401",
+                    "Amina Ben Salem",
+                    34,
+                    null,
+                    "MVA - Multi Vehicle Collision",
+                    "Red",
+                    "Under Observation",
+                    "Dr. Youssef Trabelsi",
+                    "Nurse Mariem Jlassi",
+                    "ER-03",
+                    "Polytrauma with chest pain. CT scan ordered and oxygen support initiated.",
+                    List.of("Primary survey completed", "Analgesia administered", "Imaging pending"),
+                    false,
+                    null,
+                    "2026-03-25 18:40"
+                ),
+                new HospitalPatient(
+                    null,
+                    "PT-2402",
+                    "Nadia Khelifi",
+                    67,
+                    null,
+                    "Cardiac Distress",
+                    "Orange",
+                    "Awaiting ICU Bed",
+                    "Dr. Leila Gharbi",
+                    "Nurse Hatem Saidi",
+                    "CCU-Queue",
+                    "Acute chest pain stabilized in ambulance. ECG abnormal, continuous monitoring required.",
+                    List.of("ECG reviewed", "Cardiology consulted", "ICU transfer requested"),
+                    false,
+                    null,
+                    "2026-03-25 19:05"
+                ),
+                new HospitalPatient(
+                    null,
+                    "PT-2403",
+                    "Sami Mzoughi",
+                    12,
+                    null,
+                    "Respiratory Distress",
+                    "Yellow",
+                    "Validated",
+                    "Dr. Rim Ben Amor",
+                    "Nurse Ines Toumi",
+                    "PED-08",
+                    "Nebulization completed. Pediatric team approved step-down monitoring.",
+                    List.of("Nebulizer administered", "SpO2 stabilized", "Family briefed"),
+                    true,
+                    "Dr. Rim Ben Amor",
+                    "2026-03-25 17:55"
+                )
+            ));
+            log.info("Seeded hospital patient dossiers.");
+        }
+
+        if (bedAvailabilityRepository.count() == 0) {
+            bedAvailabilityRepository.saveAll(List.of(
+                new BedAvailability(null, "Emergency", 24, 19, 3, 2, "Busy"),
+                new BedAvailability(null, "ICU", 16, 15, 1, 0, "Critical"),
+                new BedAvailability(null, "Pediatrics", 20, 11, 7, 2, "Available"),
+                new BedAvailability(null, "Surgery", 18, 12, 4, 2, "Available")
+            ));
+            log.info("Seeded bed availability.");
+        }
+
+        if (medicalResourceRepository.count() == 0) {
+            medicalResourceRepository.saveAll(List.of(
+                new MedicalResource(null, "Ventilators", "Respiratory", 4, 12, "Low", "ICU", "2026-03-25 19:10"),
+                new MedicalResource(null, "Defibrillators", "Critical Care", 9, 10, "Operational", "Emergency", "2026-03-25 18:55"),
+                new MedicalResource(null, "Blood Units O-", "Transfusion", 3, 14, "Low", "Blood Bank", "2026-03-25 19:00"),
+                new MedicalResource(null, "Portable Monitors", "Monitoring", 7, 9, "Operational", "Triage", "2026-03-25 18:50")
+            ));
+            log.info("Seeded medical resources.");
+        }
+
+        if (medicalStaffRepository.count() == 0) {
+            medicalStaffRepository.saveAll(List.of(
+                new MedicalStaffMember(null, "Dr. Youssef Trabelsi", "Medecin urgentiste", "Trauma", "Day", "On duty"),
+                new MedicalStaffMember(null, "Dr. Leila Gharbi", "Cardiologue", "Cardiac ICU", "Night", "On call"),
+                new MedicalStaffMember(null, "Nurse Mariem Jlassi", "Infirmiere", "Emergency", "Day", "Available"),
+                new MedicalStaffMember(null, "Nurse Hatem Saidi", "Infirmier", "Critical Care", "Night", "With patient")
+            ));
+            log.info("Seeded medical staff.");
+        }
     }
 }

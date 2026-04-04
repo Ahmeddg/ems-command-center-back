@@ -28,15 +28,14 @@ public class SecurityConfig {
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .authorizeHttpRequests(auth -> auth
-                // Swagger / OpenAPI
                 .requestMatchers(
                     "/swagger-ui.html",
                     "/swagger-ui/**",
                     "/api-docs/**",
                     "/v3/api-docs/**",
-                    "/ws/**"
+                    "/ws/**",
+                    "/ws-native/**"
                 ).permitAll()
-                // Public API — open for development; add JWT filter here for production
                 .requestMatchers(HttpMethod.GET, "/api/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/**").permitAll()
                 .requestMatchers(HttpMethod.PUT, "/api/**").permitAll()
@@ -51,9 +50,10 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(List.of(
-            "http://localhost:5173",  // Vite dev server
-            "http://localhost:4173",  // Vite preview
-            "http://localhost:3000"   // alternative dev port
+            "http://localhost:5173",
+            "http://localhost:4173",
+            "http://localhost:3000",
+            "http://localhost:4200"
         ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         config.setAllowedHeaders(List.of("*"));
