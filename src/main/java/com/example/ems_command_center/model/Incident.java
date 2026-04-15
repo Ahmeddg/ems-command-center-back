@@ -1,6 +1,7 @@
 package com.example.ems_command_center.model;
 
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 import java.util.List;
 
@@ -11,6 +12,8 @@ public record Incident(
     String location,
     Coordinates coordinates,
     String time,
+    @DBRef
+    User reporter,      
     String type, // "urgent" | "normal"
     List<String> tags,
     String status,

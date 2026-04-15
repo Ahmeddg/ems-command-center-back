@@ -5,6 +5,7 @@ import com.example.ems_command_center.service.FacilityService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,6 +23,7 @@ public class FacilityController {
 
     @GetMapping
     @Operation(summary = "Fetch all emergency facilities")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'DRIVER', 'USER')")
     public ResponseEntity<List<Facility>> getAllFacilities() {
         return ResponseEntity.ok(facilityService.getAllFacilities());
     }

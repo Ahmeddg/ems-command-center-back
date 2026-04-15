@@ -2,11 +2,17 @@ package com.example.ems_command_center.service;
 
 import com.example.ems_command_center.model.AmbulanceRouteResponse;
 import com.example.ems_command_center.model.Coordinates;
+import com.example.ems_command_center.model.DispatchAssignment;
 import com.example.ems_command_center.model.DispatchAssignmentResponse;
 import com.example.ems_command_center.model.DispatchRequest;
+import com.example.ems_command_center.model.Facility;
 import com.example.ems_command_center.model.Incident;
+import com.example.ems_command_center.model.User;
 import com.example.ems_command_center.model.Vehicle;
+import com.example.ems_command_center.repository.DispatchAssignmentRepository;
+import com.example.ems_command_center.repository.FacilityRepository;
 import com.example.ems_command_center.repository.IncidentRepository;
+import com.example.ems_command_center.repository.UserRepository;
 import com.example.ems_command_center.repository.VehicleRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -25,15 +31,24 @@ public class DispatchService {
 
     private final VehicleRepository vehicleRepository;
     private final IncidentRepository incidentRepository;
+    private final FacilityRepository facilityRepository;
+    private final UserRepository userRepository;
+    private final DispatchAssignmentRepository dispatchAssignmentRepository;
     private final SimpMessagingTemplate messagingTemplate;
 
     public DispatchService(
         VehicleRepository vehicleRepository,
         IncidentRepository incidentRepository,
+        FacilityRepository facilityRepository,
+        UserRepository userRepository,
+        DispatchAssignmentRepository dispatchAssignmentRepository,
         SimpMessagingTemplate messagingTemplate
     ) {
         this.vehicleRepository = vehicleRepository;
         this.incidentRepository = incidentRepository;
+        this.facilityRepository = facilityRepository;
+        this.userRepository = userRepository;
+        this.dispatchAssignmentRepository = dispatchAssignmentRepository;
         this.messagingTemplate = messagingTemplate;
     }
 
@@ -50,20 +65,48 @@ public class DispatchService {
         return buildRoute(vehicle, incident);
     }
 
-    public DispatchAssignmentResponse dispatchAmbulance(DispatchRequest request) {
-        if (request == null || request.incidentId() == null || request.vehicleId() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "incidentId and vehicleId are required");
+    public DispatchAssignmentResponse getAssignmentById(String assignmentId) {
+        return toResponse(getAssignmentEntity(assignmentId));
+    }
+
+    public List<DispatchAssignmentResponse> getAssignmentsByHospital(String hospitalId) {
+        if (isBlank(hospitalId)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "hospitalId is required");
         }
+
+        getHospital(hospitalId);
+        return dispatchAssignmentRepository.findByHospitalIdOrderByCreatedAtDesc(hospitalId).stream()
+            .map(this::toResponse)
+            .toList();
+    }
+
+    public List<DispatchAssignmentResponse> getAssignmentsByVehicle(String vehicleId) {
+        if (isBlank(vehicleId)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "vehicleId is required");
+        }
+
+        getVehicle(vehicleId);
+        return dispatchAssignmentRepository.findByVehicleIdOrderByCreatedAtDesc(vehicleId).stream()
+            .map(this::toResponse)
+            .toList();
+    }
+
+    public DispatchAssignmentResponse dispatchAmbulance(DispatchRequest request) {
+        validateDispatchRequest(request);
 
         Vehicle vehicle = getVehicle(request.vehicleId());
         Incident incident = getIncident(request.incidentId());
+        Facility hospital = getHospital(request.hospitalId());
+        User driver = userRepository.findByAmbulanceId(vehicle.id()).orElse(null);
+
         validateDispatchableVehicle(vehicle);
 
         AmbulanceRouteResponse route = buildRoute(vehicle, incident);
-        String dispatchedAt = LocalDateTime.now().format(TIMESTAMP_FORMATTER);
+        LocalDateTime now = LocalDateTime.now();
+        String dispatchedAt = now.format(TIMESTAMP_FORMATTER);
         String dispatcher = request.dispatcher() == null || request.dispatcher().isBlank()
             ? "Dispatch Center"
-            : request.dispatcher();
+            : request.dispatcher().trim();
 
         Vehicle dispatchedVehicle = new Vehicle(
             vehicle.id(),
@@ -77,11 +120,17 @@ public class DispatchService {
         );
 
         List<String> updatedTags = new ArrayList<>(incident.tags() == null ? List.of() : incident.tags());
-        updatedTags.removeIf(tag -> tag != null && tag.startsWith(vehicle.name()));
+        updatedTags.removeIf(tag -> tag != null && (
+            tag.startsWith(vehicle.name())
+                || tag.startsWith("Dispatcher: ")
+                || tag.startsWith("Notes: ")
+                || tag.startsWith("Hospital: ")
+        ));
         updatedTags.add(vehicle.name() + " Dispatched");
         updatedTags.add("Dispatcher: " + dispatcher);
+        updatedTags.add("Hospital: " + hospital.name());
         if (request.notes() != null && !request.notes().isBlank()) {
-            updatedTags.add("Notes: " + request.notes());
+            updatedTags.add("Notes: " + request.notes().trim());
         }
 
         Incident updatedIncident = new Incident(
@@ -90,6 +139,7 @@ public class DispatchService {
             incident.location(),
             incident.coordinates(),
             incident.time(),
+            incident.reporter(),
             incident.type(),
             updatedTags,
             "Dispatched",
@@ -99,22 +149,40 @@ public class DispatchService {
         vehicleRepository.save(dispatchedVehicle);
         incidentRepository.save(updatedIncident);
 
-        DispatchAssignmentResponse response = new DispatchAssignmentResponse(
+        DispatchAssignment savedAssignment = dispatchAssignmentRepository.save(new DispatchAssignment(
+            null,
             updatedIncident.id(),
             updatedIncident.title(),
             dispatchedVehicle.id(),
             dispatchedVehicle.name(),
+            driver != null ? driver.getId() : null,
+            driver != null ? driver.getName() : null,
+            hospital.id(),
+            hospital.name(),
             dispatcher,
             request.notes(),
             dispatchedVehicle.status(),
             updatedIncident.status(),
             dispatchedAt,
+            now,
             updatedIncident.tags(),
             route
-        );
+        ));
 
+        DispatchAssignmentResponse response = toResponse(savedAssignment);
         publishDispatchNotifications(response);
         return response;
+    }
+
+    private void validateDispatchRequest(DispatchRequest request) {
+        if (request == null || isBlank(request.incidentId()) || isBlank(request.vehicleId()) || isBlank(request.hospitalId())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "incidentId, vehicleId, and hospitalId are required");
+        }
+    }
+
+    private DispatchAssignment getAssignmentEntity(String assignmentId) {
+        return dispatchAssignmentRepository.findById(assignmentId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Dispatch assignment not found"));
     }
 
     private Vehicle getVehicle(String vehicleId) {
@@ -125,6 +193,17 @@ public class DispatchService {
     private Incident getIncident(String incidentId) {
         return incidentRepository.findById(incidentId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Incident not found"));
+    }
+
+    private Facility getHospital(String hospitalId) {
+        Facility hospital = facilityRepository.findById(hospitalId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Hospital not found"));
+
+        if (isBlank(hospital.facilityType())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Selected facility is not a hospital");
+        }
+
+        return hospital;
     }
 
     private void validateDispatchableVehicle(Vehicle vehicle) {
@@ -169,6 +248,27 @@ public class DispatchService {
         );
     }
 
+    private DispatchAssignmentResponse toResponse(DispatchAssignment assignment) {
+        return new DispatchAssignmentResponse(
+            assignment.id(),
+            assignment.incidentId(),
+            assignment.incidentTitle(),
+            assignment.vehicleId(),
+            assignment.vehicleName(),
+            assignment.driverId(),
+            assignment.driverName(),
+            assignment.hospitalId(),
+            assignment.hospitalName(),
+            assignment.dispatcher(),
+            assignment.notes(),
+            assignment.vehicleStatus(),
+            assignment.incidentStatus(),
+            assignment.dispatchedAt(),
+            assignment.incidentTags(),
+            assignment.route()
+        );
+    }
+
     private double averageSpeedFor(String incidentType) {
         return "urgent".equalsIgnoreCase(incidentType) ? 52.0 : 38.0;
     }
@@ -201,9 +301,13 @@ public class DispatchService {
         return Math.round(value * 100.0) / 100.0;
     }
 
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
+    }
+
     private void publishDispatchNotifications(DispatchAssignmentResponse response) {
-        messagingTemplate.convertAndSend("/topic/drivers/dispatches", response);
+        messagingTemplate.convertAndSend("/topic/admin/dispatches", response);
         messagingTemplate.convertAndSend("/topic/drivers/" + response.vehicleId() + "/dispatches", response);
-        messagingTemplate.convertAndSend("/topic/hospital-manager/dispatches", response);
+        messagingTemplate.convertAndSend("/topic/hospitals/" + response.hospitalId() + "/dispatches", response);
     }
 }

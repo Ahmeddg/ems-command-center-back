@@ -23,8 +23,7 @@ public class DataSeeder implements ApplicationRunner {
     private final FacilityRepository facilityRepository;
     private final VehicleRepository vehicleRepository;
     private final ReportRepository reportRepository;
-    private final PersonnelRepository personnelRepository;
-    private final UserProfileRepository userProfileRepository;
+    private final UserRepository userRepository;
     private final AnalyticsRepository analyticsRepository;
     private final HospitalPatientRepository hospitalPatientRepository;
     private final BedAvailabilityRepository bedAvailabilityRepository;
@@ -36,8 +35,7 @@ public class DataSeeder implements ApplicationRunner {
         FacilityRepository facilityRepository,
         VehicleRepository vehicleRepository,
         ReportRepository reportRepository,
-        PersonnelRepository personnelRepository,
-        UserProfileRepository userProfileRepository,
+        UserRepository userRepository,
         AnalyticsRepository analyticsRepository,
         HospitalPatientRepository hospitalPatientRepository,
         BedAvailabilityRepository bedAvailabilityRepository,
@@ -48,8 +46,7 @@ public class DataSeeder implements ApplicationRunner {
         this.facilityRepository = facilityRepository;
         this.vehicleRepository = vehicleRepository;
         this.reportRepository = reportRepository;
-        this.personnelRepository = personnelRepository;
-        this.userProfileRepository = userProfileRepository;
+        this.userRepository = userRepository;
         this.analyticsRepository = analyticsRepository;
         this.hospitalPatientRepository = hospitalPatientRepository;
         this.bedAvailabilityRepository = bedAvailabilityRepository;
@@ -63,8 +60,7 @@ public class DataSeeder implements ApplicationRunner {
         seedFacilities();
         seedVehicles();
         seedReports();
-        seedPersonnel();
-        seedUserProfiles();
+        seedUsers();
         seedAnalytics();
         seedHospitalManagerData();
         log.info("✅ EMS Command Center — database seeding complete.");
@@ -76,13 +72,13 @@ public class DataSeeder implements ApplicationRunner {
             new Incident(null, "MVA - Multi Vehicle Collision",
                 "Avenue Habib Bourguiba, Tunis",
                 new Coordinates(36.8065, 10.1815),
-                "4m ago", "urgent",
+                "4m ago", null, "urgent",
                 Arrays.asList("AMB-104 En Route", "PD Notified"),
                 "Active", 1),
             new Incident(null, "Cardiac Distress",
                 "Rue de Marseille, Tunis",
                 new Coordinates(36.8165, 10.1915),
-                "12m ago", "normal",
+                "12m ago", null, "normal",
                 Arrays.asList("Patient Onboard"),
                 "Transporting", 2)
         ));
@@ -176,44 +172,86 @@ public class DataSeeder implements ApplicationRunner {
         log.info("Seeded reports collection.");
     }
 
-    private void seedPersonnel() {
-        if (personnelRepository.count() > 0) return;
-        personnelRepository.saveAll(List.of(
-            new Personnel("EMS-44291", "Dr. Sarah Chen", "sarah.chen@ems-ops.com",
-                "Administrator", "Active Now", "success", "ShieldCheck",
-                "bg-primary-container text-white"),
-            new Personnel("EMS-99102", "Marcus Thorne", "m.thorne@ems-ops.com",
-                "Dispatcher", "Active Now", "success", "Headphones",
-                "bg-surface-container-highest text-on-surface"),
-            new Personnel("EMS-88273", "James Wilson", "j.wilson@ems-ops.com",
-                "Driver / EMT", "Off Duty", "normal", "Ambulance",
-                "bg-surface-container text-on-surface-variant"),
-            new Personnel("EMS-22104", "Elena Rodriguez", "e.rod@ems-ops.com",
-                "Lead Paramedic", "Emergency Call", "urgent", "FileText",
-                "bg-tertiary-container text-white")
-        ));
-        log.info("Seeded personnel collection.");
-    }
+    private void seedUsers() {
+        // Only seed users that don't already exist (by email)
+        List<User> usersToSeed = new java.util.ArrayList<>();
 
-    private void seedUserProfiles() {
-        if (userProfileRepository.count() > 0) return;
-        UserProfile profile = new UserProfile(
-            "EMS-9421-CMO",
-            "Dr. Sarah Jenkins",
-            "Chief Medical Officer",
-            "s.jenkins@ems-command.gov",
-            "+1 (555) 942-1084",
-            "Central Command Hub, Sector 4",
-            "Jan 2018",
-            "Emergency Trauma & Critical Care",
-            List.of(
-                new UserStat("Incidents Managed", "1,284", "Activity", "text-primary"),
-                new UserStat("Avg. Response Time", "06:12", "Clock", "text-tertiary"),
-                new UserStat("Reports Approved", "482", "FileText", "text-secondary")
-            )
-        );
-        userProfileRepository.save(profile);
-        log.info("Seeded users collection.");
+        // Admin
+        if (userRepository.findByEmail("sarah.chen@ems.org").isEmpty()) {
+            User admin = new User();
+            admin.setName("Dr. Sarah Chen");
+            admin.setEmail("sarah.chen@ems.org");
+            admin.setRole("ADMIN");
+            admin.setStatus("Active Now");
+            admin.setStatusType("success");
+            admin.setIconName("shield-check");
+            admin.setColor("text-emerald-400");
+            admin.setPhone("+1 (555) 123-4567");
+            admin.setLocation("Central Command");
+            admin.setJoined("2023-01-15");
+            admin.setSpecialization("Emergency Administration");
+            admin.setStats(List.of(
+                new UserStat("Incidents Managed", "1,284", "activity", "text-blue-400"),
+                new UserStat("Response Rate", "98.5%", "trending-up", "text-emerald-400"),
+                new UserStat("Team Size", "45", "users", "text-purple-400"),
+                new UserStat("Avg Response", "4.2 min", "clock", "text-amber-400")
+            ));
+            usersToSeed.add(admin);
+        }
+
+        // Driver with ambulanceId
+        if (userRepository.findByEmail("james.wilson@ems.org").isEmpty()) {
+            User driver = new User();
+            driver.setName("James Wilson");
+            driver.setEmail("james.wilson@ems.org");
+            driver.setRole("DRIVER");
+            driver.setStatus("On Route");
+            driver.setStatusType("normal");
+            driver.setIconName("truck");
+            driver.setColor("text-blue-400");
+            driver.setAmbulanceId("AMB-001");
+            driver.setJoined("2023-06-20");
+            driver.setSpecialization("Emergency Medical Technician");
+            usersToSeed.add(driver);
+        }
+
+        // Manager with hospitalId
+        if (userRepository.findByEmail("marcus.thorne@ems.org").isEmpty()) {
+            User manager = new User();
+            manager.setName("Marcus Thorne");
+            manager.setEmail("marcus.thorne@ems.org");
+            manager.setRole("MANAGER");
+            manager.setStatus("Active Now");
+            manager.setStatusType("success");
+            manager.setIconName("building-2");
+            manager.setColor("text-emerald-400");
+            manager.setHospitalId("HOSP-001");
+            manager.setJoined("2023-03-10");
+            manager.setSpecialization("Hospital Operations");
+            usersToSeed.add(manager);
+        }
+
+        // Regular User
+        if (userRepository.findByEmail("elena.rodriguez@ems.org").isEmpty()) {
+            User user = new User();
+            user.setName("Elena Rodriguez");
+            user.setEmail("elena.rodriguez@ems.org");
+            user.setRole("USER");
+            user.setStatus("Off Duty");
+            user.setStatusType("urgent");
+            user.setIconName("user");
+            user.setColor("text-red-400");
+            user.setJoined("2023-09-01");
+            user.setSpecialization("Lead Paramedic");
+            usersToSeed.add(user);
+        }
+
+        if (!usersToSeed.isEmpty()) {
+            userRepository.saveAll(usersToSeed);
+            log.info("Seeded users collection.");
+        } else {
+            log.info("All seed users already exist, skipping.");
+        }
     }
 
     private void seedAnalytics() {
