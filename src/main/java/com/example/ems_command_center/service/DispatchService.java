@@ -17,6 +17,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class DispatchService {
@@ -100,6 +101,7 @@ public class DispatchService {
         incidentRepository.save(updatedIncident);
 
         DispatchAssignmentResponse response = new DispatchAssignmentResponse(
+            "ASSIGN-" + updatedIncident.id() + "-" + dispatchedVehicle.id() + "-" + UUID.randomUUID().toString().replace("-", "").substring(0, 6).toUpperCase(),
             updatedIncident.id(),
             updatedIncident.title(),
             dispatchedVehicle.id(),

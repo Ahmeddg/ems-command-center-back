@@ -3,6 +3,7 @@ package com.example.ems_command_center.model;
 import java.util.List;
 
 public record DispatchAssignmentResponse(
+    String assignmentId,
     String incidentId,
     String incidentTitle,
     String vehicleId,
