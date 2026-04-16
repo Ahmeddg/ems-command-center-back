@@ -1,3 +1,5 @@
+#docker run -d --name keycloak -p 8080:8080 -e KEYCLOAK_ADMIN=admin -e KEYCLOAK_ADMIN_PASSWORD=admin -v keycloak_data:/opt/keycloak/data quay.io/keycloak/keycloak:latest start-dev
+
 # Complete rebuild and restart script
 # Rebuilds Maven project, Docker image, and docker-compose stack
 
@@ -37,5 +39,5 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "Docker stack started" -ForegroundColor Green
 
 Write-Host "`n=== Complete! ===" -ForegroundColor Cyan
-Write-Host "Backend: http://localhost:8080" -ForegroundColor Cyan
-Write-Host "Mongo Express: http://localhost:8081" -ForegroundColor Cyan
+Write-Host "Backend: http://localhost:8081" -ForegroundColor Cyan
+Write-Host "Mongo Express: http://localhost:8082" -ForegroundColor Cyan

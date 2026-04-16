@@ -5,6 +5,7 @@ import com.example.ems_command_center.service.StatsService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -20,6 +21,7 @@ public class StatsController {
 
     @GetMapping
     @Operation(summary = "Fetch real-time dashboard statistics")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'DRIVER', 'USER')")
     public ResponseEntity<DashboardStats> getDashboardStats() {
         return ResponseEntity.ok(statsService.getDashboardStats());
     }

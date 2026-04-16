@@ -4,6 +4,7 @@ import com.example.ems_command_center.service.AnalyticsService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,12 +23,14 @@ public class AnalyticsController {
 
     @GetMapping("/dispatch")
     @Operation(summary = "Aggregated dispatch volume over time")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ResponseEntity<List<Map<String, Object>>> getDispatchVolume() {
         return ResponseEntity.ok(analyticsService.getDispatchVolume());
     }
 
     @GetMapping("/response")
     @Operation(summary = "Response time data by day")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ResponseEntity<List<Map<String, Object>>> getResponseTimeData() {
         return ResponseEntity.ok(analyticsService.getResponseTimeData());
     }

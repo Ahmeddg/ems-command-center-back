@@ -27,6 +27,11 @@ public class IncidentService {
         return incidentRepository.findByOrderByPriorityAsc();
     }
 
+    public Incident getIncidentById(String id) {
+        return incidentRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Incident not found"));
+    }
+
     public Incident createIncident(Incident incident) {
         Incident savedIncident = incidentRepository.save(withTimestamp(incident, null));
         publishEvent("CREATED", savedIncident);
@@ -68,6 +73,7 @@ public class IncidentService {
             incident.location(),
             incident.coordinates(),
             timestamp,
+            incident.reporter(),
             incident.type(),
             incident.tags(),
             incident.status(),
@@ -75,6 +81,10 @@ public class IncidentService {
         );
     }
 
+    /**
+     * Publishes to the general incidents topic.
+     * Subscribers: ADMIN, USER, DRIVER (all receive general incident updates).
+     */
     private void publishEvent(String action, Incident incident) {
         messagingTemplate.convertAndSend(
             "/topic/incidents",
@@ -82,6 +92,10 @@ public class IncidentService {
         );
     }
 
+    /**
+     * Publishes to the hospital-manager topic.
+     * Subscribers: MANAGER (scoped to /topic/hospital-manager/incidents).
+     */
     private void publishHospitalManagerEvent(String action, Incident incident) {
         messagingTemplate.convertAndSend(
             "/topic/hospital-manager/incidents",
