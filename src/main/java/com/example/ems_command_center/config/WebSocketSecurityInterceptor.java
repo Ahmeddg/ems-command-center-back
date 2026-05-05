@@ -22,10 +22,9 @@ public class WebSocketSecurityInterceptor implements ChannelInterceptor {
     private final AccessControlService accessControlService;
 
     public WebSocketSecurityInterceptor(
-        JwtDecoder jwtDecoder,
-        KeycloakJwtAuthenticationConverter authenticationConverter,
-        AccessControlService accessControlService
-    ) {
+            JwtDecoder jwtDecoder,
+            KeycloakJwtAuthenticationConverter authenticationConverter,
+            AccessControlService accessControlService) {
         this.jwtDecoder = jwtDecoder;
         this.authenticationConverter = authenticationConverter;
         this.accessControlService = accessControlService;
@@ -61,34 +60,39 @@ public class WebSocketSecurityInterceptor implements ChannelInterceptor {
                 if (destination.startsWith("/topic/admin/")) {
                     requireAuthentication(authentication, "Authentication required for admin topics");
                     boolean isAdmin = authentication.getAuthorities().stream()
-                        .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+                            .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
                     if (!isAdmin) {
                         throw new IllegalArgumentException("Only ADMIN can subscribe to admin topics");
                     }
                 } else if (destination.startsWith("/topic/drivers/")) {
                     requireAuthentication(authentication, "Authentication required for drivers topic");
-                    boolean isAdmin = authentication.getAuthorities().stream()
-                        .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+                    boolean isAdminOrDriver = authentication.getAuthorities().stream()
+                            .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN")
+                                    || a.getAuthority().equals("ROLE_DRIVER"));
 
-                    if (!isAdmin) {
+                    if (!isAdminOrDriver) {
                         String[] parts = destination.split("/");
                         if (parts.length >= 4) {
                             String ambulanceId = parts[3];
                             if ("dispatches".equals(ambulanceId)) {
                                 boolean allowedRoles = authentication.getAuthorities().stream()
-                                    .anyMatch(a -> a.getAuthority().equals("ROLE_MANAGER") || a.getAuthority().equals("ROLE_DRIVER"));
+                                        .anyMatch(a -> a.getAuthority().equals("ROLE_MANAGER")
+                                                || a.getAuthority().equals("ROLE_DRIVER"));
                                 if (!allowedRoles) {
                                     throw new IllegalArgumentException("Not authorized to subscribe to dispatches");
                                 }
                             } else if (!accessControlService.isAssignedAmbulance(authentication, ambulanceId)) {
-                                throw new IllegalArgumentException("Not authorized to subscribe to this ambulance topic");
+                                throw new IllegalArgumentException(
+                                        "Not authorized to subscribe to this ambulance topic");
                             }
                         }
                     }
-                } else if (destination.startsWith("/topic/hospital-manager/") || destination.startsWith("/topic/hospitals/")) {
+                } else if (destination.startsWith("/topic/hospital-manager/")
+                        || destination.startsWith("/topic/hospitals/")) {
                     requireAuthentication(authentication, "Authentication required for hospital topics");
                     boolean isAdminOrManager = authentication.getAuthorities().stream()
-                        .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_MANAGER"));
+                            .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN")
+                                    || a.getAuthority().equals("ROLE_MANAGER"));
 
                     if (!isAdminOrManager) {
                         throw new IllegalArgumentException("Only ADMIN or MANAGER can subscribe to hospital topics");
@@ -99,9 +103,10 @@ public class WebSocketSecurityInterceptor implements ChannelInterceptor {
                         if (parts.length >= 4) {
                             String hospitalId = parts[3];
                             boolean isAdmin = authentication.getAuthorities().stream()
-                                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+                                    .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
                             if (!isAdmin && !accessControlService.isAssignedHospital(authentication, hospitalId)) {
-                                throw new IllegalArgumentException("Not authorized to subscribe to this hospital topic");
+                                throw new IllegalArgumentException(
+                                        "Not authorized to subscribe to this hospital topic");
                             }
                         }
                     }

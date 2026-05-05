@@ -16,17 +16,24 @@ public class User {
     
     private String phone;
     private String location;
-    private String joined;
     private String specialization;
     private String role;          // USER, ADMIN, DRIVER, MANAGER
     private String status;        // e.g. "Active Now", "Off Duty"
     private String statusType;    // "success", "normal", "urgent"
-    private String iconName;      // UI icon
-    private String color;         // CSS class
-    private List<UserStat> stats; // embedded stats
     private String ambulanceId;   // DRIVER-specific
     private String hospitalId;    // MANAGER-specific
     
+    // Driver-specific fields
+    private String license;
+    private String station;
+    private Integer experience;
+    private List<String> certifications;
+    private Double rating;
+    private Integer totalMissions;
+    private Integer missionsThisMonth;
+    private String avatar;
+    private Coordinates currentLocation;
+
     @Indexed(unique = true, sparse = true)
     private String keycloakId;    // Keycloak user ID (sub claim)
 
@@ -37,23 +44,30 @@ public class User {
     // All-arg constructor
     public User(String id, String name, String email, String phone, String location, String joined,
                 String specialization, String role, String status, String statusType, String iconName,
-                String color, List<UserStat> stats, String ambulanceId, String hospitalId, String keycloakId) {
+                String color, List<UserStat> stats, String ambulanceId, String hospitalId, String keycloakId,
+                String license, String station, Integer experience, List<String> certifications, 
+                Double rating, Integer totalMissions, Integer missionsThisMonth, String avatar) {
         this.id = id;
         this.name = name;
         this.email = email;
         this.phone = phone;
         this.location = location;
-        this.joined = joined;
         this.specialization = specialization;
         this.role = role;
         this.status = status;
         this.statusType = statusType;
-        this.iconName = iconName;
-        this.color = color;
-        this.stats = stats;
+
         this.ambulanceId = ambulanceId;
         this.hospitalId = hospitalId;
         this.keycloakId = keycloakId;
+        this.license = license;
+        this.station = station;
+        this.experience = experience;
+        this.certifications = certifications;
+        this.rating = rating;
+        this.totalMissions = totalMissions;
+        this.missionsThisMonth = missionsThisMonth;
+        this.avatar = avatar;
     }
 
     // Getters and Setters
@@ -97,14 +111,6 @@ public class User {
         this.location = location;
     }
 
-    public String getJoined() {
-        return joined;
-    }
-
-    public void setJoined(String joined) {
-        this.joined = joined;
-    }
-
     public String getSpecialization() {
         return specialization;
     }
@@ -137,30 +143,6 @@ public class User {
         this.statusType = statusType;
     }
 
-    public String getIconName() {
-        return iconName;
-    }
-
-    public void setIconName(String iconName) {
-        this.iconName = iconName;
-    }
-
-    public String getColor() {
-        return color;
-    }
-
-    public void setColor(String color) {
-        this.color = color;
-    }
-
-    public List<UserStat> getStats() {
-        return stats;
-    }
-
-    public void setStats(List<UserStat> stats) {
-        this.stats = stats;
-    }
-
     public String getAmbulanceId() {
         return ambulanceId;
     }
@@ -183,5 +165,77 @@ public class User {
 
     public void setKeycloakId(String keycloakId) {
         this.keycloakId = keycloakId;
+    }
+
+    public String getLicense() {
+        return license;
+    }
+
+    public void setLicense(String license) {
+        this.license = license;
+    }
+
+    public String getStation() {
+        return station;
+    }
+
+    public void setStation(String station) {
+        this.station = station;
+    }
+
+    public Integer getExperience() {
+        return experience;
+    }
+
+    public void setExperience(Integer experience) {
+        this.experience = experience;
+    }
+
+    public List<String> getCertifications() {
+        return certifications;
+    }
+
+    public void setCertifications(List<String> certifications) {
+        this.certifications = certifications;
+    }
+
+    public Double getRating() {
+        return rating;
+    }
+
+    public void setRating(Double rating) {
+        this.rating = rating;
+    }
+
+    public Integer getTotalMissions() {
+        return totalMissions;
+    }
+
+    public void setTotalMissions(Integer totalMissions) {
+        this.totalMissions = totalMissions;
+    }
+
+    public Integer getMissionsThisMonth() {
+        return missionsThisMonth;
+    }
+
+    public void setMissionsThisMonth(Integer missionsThisMonth) {
+        this.missionsThisMonth = missionsThisMonth;
+    }
+
+    public String getAvatar() {
+        return avatar;
+    }
+
+    public void setAvatar(String avatar) {
+        this.avatar = avatar;
+    }
+
+    public Coordinates getCurrentLocation() {
+        return currentLocation;
+    }
+
+    public void setCurrentLocation(Coordinates currentLocation) {
+        this.currentLocation = currentLocation;
     }
 }

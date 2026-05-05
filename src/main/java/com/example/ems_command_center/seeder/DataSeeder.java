@@ -60,7 +60,6 @@ public class DataSeeder implements ApplicationRunner {
         seedFacilities();
         seedVehicles();
         seedReports();
-        seedUsers();
         seedAnalytics();
         seedHospitalManagerData();
         log.info("✅ EMS Command Center — database seeding complete.");
@@ -140,6 +139,7 @@ public class DataSeeder implements ApplicationRunner {
         vehicleRepository.saveAll(List.of(
             new Vehicle("UNIT-704", "AMB-104", "busy", "ambulance",
                 new Coordinates(36.8065, 10.1815),
+                "M. Ben Ali",
                 Arrays.asList("M. Ben Ali", "S. Trabelsi"), "2m ago",
                 List.of(
                     new Equipment("VEQ-001", "Portable Ventilator", "functional", "2023-10-24", 1),
@@ -148,12 +148,14 @@ public class DataSeeder implements ApplicationRunner {
                 )),
             new Vehicle("UNIT-912", "AMB-202", "available", "ambulance",
                 new Coordinates(36.8165, 10.1715),
+                "A. Mansour",
                 Arrays.asList("A. Mansour"), "5m ago",
                 List.of(
                     new Equipment("VEQ-004", "Defibrillator", "functional", "2023-10-23", 1)
                 )),
             new Vehicle("UNIT-402", "SUP-01", "busy", "supervisor",
                 new Coordinates(36.7965, 10.1915),
+                "B. Gammarth",
                 Arrays.asList("B. Gammarth"), "10m ago",
                 List.of(
                     new Equipment("VEQ-005", "Radio Comms", "functional", "2023-10-20", 2)
@@ -170,88 +172,6 @@ public class DataSeeder implements ApplicationRunner {
             new Report(null, "Fleet_Maintenance_Log_2023.pdf", "Resources", "Oct 25, 2023", "Archived")
         ));
         log.info("Seeded reports collection.");
-    }
-
-    private void seedUsers() {
-        // Only seed users that don't already exist (by email)
-        List<User> usersToSeed = new java.util.ArrayList<>();
-
-        // Admin
-        if (userRepository.findByEmail("sarah.chen@ems.org").isEmpty()) {
-            User admin = new User();
-            admin.setName("Dr. Sarah Chen");
-            admin.setEmail("sarah.chen@ems.org");
-            admin.setRole("ADMIN");
-            admin.setStatus("Active Now");
-            admin.setStatusType("success");
-            admin.setIconName("shield-check");
-            admin.setColor("text-emerald-400");
-            admin.setPhone("+1 (555) 123-4567");
-            admin.setLocation("Central Command");
-            admin.setJoined("2023-01-15");
-            admin.setSpecialization("Emergency Administration");
-            admin.setStats(List.of(
-                new UserStat("Incidents Managed", "1,284", "activity", "text-blue-400"),
-                new UserStat("Response Rate", "98.5%", "trending-up", "text-emerald-400"),
-                new UserStat("Team Size", "45", "users", "text-purple-400"),
-                new UserStat("Avg Response", "4.2 min", "clock", "text-amber-400")
-            ));
-            usersToSeed.add(admin);
-        }
-
-        // Driver with ambulanceId
-        if (userRepository.findByEmail("james.wilson@ems.org").isEmpty()) {
-            User driver = new User();
-            driver.setName("James Wilson");
-            driver.setEmail("james.wilson@ems.org");
-            driver.setRole("DRIVER");
-            driver.setStatus("On Route");
-            driver.setStatusType("normal");
-            driver.setIconName("truck");
-            driver.setColor("text-blue-400");
-            driver.setAmbulanceId("AMB-001");
-            driver.setJoined("2023-06-20");
-            driver.setSpecialization("Emergency Medical Technician");
-            usersToSeed.add(driver);
-        }
-
-        // Manager with hospitalId
-        if (userRepository.findByEmail("marcus.thorne@ems.org").isEmpty()) {
-            User manager = new User();
-            manager.setName("Marcus Thorne");
-            manager.setEmail("marcus.thorne@ems.org");
-            manager.setRole("MANAGER");
-            manager.setStatus("Active Now");
-            manager.setStatusType("success");
-            manager.setIconName("building-2");
-            manager.setColor("text-emerald-400");
-            manager.setHospitalId("HOSP-001");
-            manager.setJoined("2023-03-10");
-            manager.setSpecialization("Hospital Operations");
-            usersToSeed.add(manager);
-        }
-
-        // Regular User
-        if (userRepository.findByEmail("elena.rodriguez@ems.org").isEmpty()) {
-            User user = new User();
-            user.setName("Elena Rodriguez");
-            user.setEmail("elena.rodriguez@ems.org");
-            user.setRole("USER");
-            user.setStatus("Off Duty");
-            user.setStatusType("urgent");
-            user.setIconName("user");
-            user.setColor("text-red-400");
-            user.setJoined("2023-09-01");
-            user.setSpecialization("Lead Paramedic");
-            usersToSeed.add(user);
-        }
-
-        if (!usersToSeed.isEmpty()) {
-            userRepository.saveAll(usersToSeed);
-            log.info("Seeded users collection.");
-        } else {
-            log.info("All seed users already exist, skipping.");
-        }
     }
 
     private void seedAnalytics() {

@@ -15,7 +15,7 @@ public record DispatchAssignmentResponse(
     String dispatcher,
     String notes,
     String vehicleStatus,
-    String incidentStatus,
+    AssignmentState state,
     String dispatchedAt,
     List<String> incidentTags,
     AmbulanceRouteResponse route

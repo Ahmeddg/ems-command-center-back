@@ -107,11 +107,8 @@ public class UserSyncService {
         user.setRole(role != null ? role : "USER");
         user.setHospitalId(hospitalId);
         user.setAmbulanceId(ambulanceId);
-        user.setJoined(LocalDate.now().toString());
         user.setStatus("Active Now");
         user.setStatusType("success");
-        user.setIconName("user");
-        user.setColor("text-emerald-400");
         return userRepository.save(user);
     }
 
