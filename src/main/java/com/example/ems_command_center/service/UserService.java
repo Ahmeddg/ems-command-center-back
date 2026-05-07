@@ -52,4 +52,15 @@ public class UserService {
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
     }
 
+    public User updateDriverStatus(String driverId, String status) {
+        User user = getUserById(driverId);
+        user.setStatus(status);
+        return userRepository.save(user);
+    }
+
+    public void updateDriverLocation(String driverId, com.example.ems_command_center.model.Coordinates location) {
+        User user = getUserById(driverId);
+        user.setCurrentLocation(location);
+        userRepository.save(user);
+    }
 }

@@ -1,6 +1,7 @@
 package com.example.ems_command_center.service;
 
 import com.example.ems_command_center.model.AmbulanceRouteResponse;
+import com.example.ems_command_center.model.AssignmentState;
 import com.example.ems_command_center.model.Coordinates;
 import com.example.ems_command_center.model.DispatchAssignment;
 import com.example.ems_command_center.model.DispatchAssignmentResponse;
@@ -15,6 +16,7 @@ import com.example.ems_command_center.repository.IncidentRepository;
 import com.example.ems_command_center.repository.UserRepository;
 import com.example.ems_command_center.repository.VehicleRepository;
 import org.springframework.http.HttpStatus;
+import org.springframework.lang.NonNull;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -175,7 +177,7 @@ public class DispatchService {
             dispatcher,
             request.notes(),
             dispatchedVehicle.status(),
-            updatedIncident.status(),
+            AssignmentState.ASSIGNED,
             dispatchedAt,
             now,
             updatedIncident.tags(),
@@ -275,7 +277,7 @@ public class DispatchService {
             assignment.dispatcher(),
             assignment.notes(),
             assignment.vehicleStatus(),
-            assignment.incidentStatus(),
+            assignment.state(),
             assignment.dispatchedAt(),
             assignment.incidentTags(),
             assignment.route()
@@ -322,5 +324,52 @@ public class DispatchService {
         messagingTemplate.convertAndSend("/topic/admin/dispatches", response);
         messagingTemplate.convertAndSend("/topic/drivers/" + response.vehicleId() + "/dispatches", response);
         messagingTemplate.convertAndSend("/topic/hospitals/" + response.hospitalId() + "/dispatches", response);
+    }
+    public void updateAssignmentState(@NonNull String assignmentId, AssignmentState state) {
+        DispatchAssignment assignment = dispatchAssignmentRepository.findById(assignmentId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Assignment not found"));
+
+        DispatchAssignment updatedAssignment = new DispatchAssignment(
+            assignment.id(),
+            assignment.incidentId(),
+            assignment.incidentTitle(),
+            assignment.vehicleId(),
+            assignment.vehicleName(),
+            assignment.driverId(),
+            assignment.driverName(),
+            assignment.hospitalId(),
+            assignment.hospitalName(),
+            assignment.dispatcher(),
+            assignment.notes(),
+            assignment.vehicleStatus(),
+            state,
+            assignment.dispatchedAt(),
+            assignment.createdAt(),
+            assignment.incidentTags(),
+            assignment.route()
+        );
+
+        dispatchAssignmentRepository.save(updatedAssignment);
+
+        // Update vehicle status if assignment is finished
+        if (state == AssignmentState.COMPLETED || state == AssignmentState.CANCELLED) {
+            vehicleRepository.findById(assignment.vehicleId()).ifPresent(vehicle -> {
+                Vehicle availableVehicle = new Vehicle(
+                    vehicle.id(),
+                    vehicle.name(),
+                    "available",
+                    vehicle.type(),
+                    vehicle.location(),
+                    null,
+                    vehicle.crew(),
+                    LocalDateTime.now().format(TIMESTAMP_FORMATTER),
+                    vehicle.equipment()
+                );
+                vehicleRepository.save(availableVehicle);
+            });
+        }
+
+        DispatchAssignmentResponse response = toResponse(updatedAssignment);
+        publishDispatchNotifications(response);
     }
 }

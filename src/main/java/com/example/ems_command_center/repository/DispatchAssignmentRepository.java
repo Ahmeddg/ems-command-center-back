@@ -1,5 +1,6 @@
 package com.example.ems_command_center.repository;
 
+import com.example.ems_command_center.model.AssignmentState;
 import com.example.ems_command_center.model.DispatchAssignment;
 import org.springframework.data.mongodb.repository.MongoRepository;
 

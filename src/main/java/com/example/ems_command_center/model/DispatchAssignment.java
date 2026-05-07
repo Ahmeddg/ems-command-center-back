@@ -20,7 +20,7 @@ public record DispatchAssignment(
     String dispatcher,
     String notes,
     String vehicleStatus,
-    String incidentStatus,
+    AssignmentState state,
     String dispatchedAt,
     LocalDateTime createdAt,
     List<String> incidentTags,

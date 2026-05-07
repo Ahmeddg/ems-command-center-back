@@ -42,9 +42,47 @@ public class VehicleService {
                 hasText(updates.status()) ? updates.status() : existing.status(),
                 hasText(updates.type()) ? updates.type() : existing.type(),
                 updates.location() != null ? updates.location() : existing.location(),
+                hasText(updates.driverId()) ? updates.driverId() : existing.driverId(),
                 updates.crew() != null ? updates.crew() : existing.crew(),
                 hasText(updates.lastUpdate()) ? updates.lastUpdate() : existing.lastUpdate(),
                 updates.equipment() != null ? updates.equipment() : existing.equipment()
+            );
+            validateVehicle(updated);
+            return vehicleRepository.save(normalizeVehicle(updated, existing));
+        });
+    }
+
+    public Optional<Vehicle> updateVehicleDriver(String id, String driverId) {
+        return vehicleRepository.findById(id).map(existing -> {
+            Vehicle updated = new Vehicle(
+                existing.id(),
+                existing.name(),
+                existing.status(),
+                existing.type(),
+                existing.location(),
+                driverId,
+                existing.crew(),
+                LocalDateTime.now().format(UPDATE_FORMAT),
+                existing.equipment()
+            );
+            validateVehicle(updated);
+            return vehicleRepository.save(normalizeVehicle(updated, existing));
+        });
+    }
+
+    public Optional<Vehicle> updateVehicleAvailability(String id) {
+        return vehicleRepository.findById(id).map(existing -> {
+            String newStatus = "available".equalsIgnoreCase(existing.status()) ? "busy" : "available";
+            Vehicle updated = new Vehicle(
+                existing.id(),
+                existing.name(),
+                newStatus, 
+                existing.type(),
+                existing.location(),
+                existing.driverId(),
+                existing.crew(),
+                LocalDateTime.now().format(UPDATE_FORMAT),
+                existing.equipment()
             );
             validateVehicle(updated);
             return vehicleRepository.save(normalizeVehicle(updated, existing));
@@ -99,6 +137,7 @@ public class VehicleService {
             normalizedStatus,
             normalizedType,
             vehicle.location(),
+            vehicle.driverId(),
             vehicle.crew(),
             lastUpdate,
             vehicle.equipment() != null ? vehicle.equipment() : existing != null ? existing.equipment() : null
