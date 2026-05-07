@@ -73,13 +73,13 @@ public class DataSeeder implements ApplicationRunner {
                 new Coordinates(36.8065, 10.1815),
                 "4m ago", null, "urgent",
                 Arrays.asList("AMB-104 En Route", "PD Notified"),
-                "Active", 1),
+                "Active", 1, null),
             new Incident(null, "Cardiac Distress",
                 "Rue de Marseille, Tunis",
                 new Coordinates(36.8165, 10.1915),
                 "12m ago", null, "normal",
                 Arrays.asList("Patient Onboard"),
-                "Transporting", 2)
+                "Transporting", 2, null)
         ));
         log.info("Seeded incidents collection.");
     }

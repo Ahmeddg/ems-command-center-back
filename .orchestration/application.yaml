@@ -1,6 +1,6 @@
 spring:
   profiles:
-    active: "identity,operate,tasklist,broker,consolidated-auth"
+    active: "operate,tasklist,broker,consolidated-auth"
 
 management:
   server:
@@ -83,7 +83,7 @@ camunda:
 
   security:
     authentication:
-      method: "oidc"
+      method: "basic"
       unprotectedApi: false
     authorizations:
       enabled: false
@@ -117,8 +117,6 @@ camunda:
   #
   operate:
     persistentSessionsEnabled: true
-    identity:
-      redirectRootUrl: "http://localhost:8080/operate"
 
     # ELS instance to store Operate data
     elasticsearch:
@@ -152,9 +150,6 @@ camunda:
   # Camunda Tasklist Configuration.
   #
   tasklist:
-    identity:
-      redirectRootUrl: "http://localhost:8080/tasklist"
-
     # Set Tasklist username and password.
     # If user with <username> does not exists it will be created.
     # Default: demo/demo

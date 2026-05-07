@@ -24,6 +24,7 @@ public record DispatchAssignment(
     String dispatchedAt,
     LocalDateTime createdAt,
     List<String> incidentTags,
-    AmbulanceRouteResponse route
+    AmbulanceRouteResponse route,
+    String patientId
 ) {
 }

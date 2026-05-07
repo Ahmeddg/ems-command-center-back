@@ -159,10 +159,13 @@ public class DispatchService {
             incident.type(),
             updatedTags,
             "Dispatched",
-            incident.priority()
+            incident.priority(),
+            incident.citoyenId()
         );
 
         incidentRepository.save(updatedIncident);
+
+        String patientId = incident.citoyenId() != null ? incident.citoyenId() : "";
 
         DispatchAssignment savedAssignment = dispatchAssignmentRepository.save(new DispatchAssignment(
             null,
@@ -181,7 +184,8 @@ public class DispatchService {
             dispatchedAt,
             now,
             updatedIncident.tags(),
-            route
+            route,
+            patientId
         ));
 
         DispatchAssignmentResponse response = toResponse(savedAssignment);
@@ -280,7 +284,8 @@ public class DispatchService {
             assignment.state(),
             assignment.dispatchedAt(),
             assignment.incidentTags(),
-            assignment.route()
+            assignment.route(),
+            assignment.patientId()
         );
     }
 
@@ -324,6 +329,10 @@ public class DispatchService {
         messagingTemplate.convertAndSend("/topic/admin/dispatches", response);
         messagingTemplate.convertAndSend("/topic/drivers/" + response.vehicleId() + "/dispatches", response);
         messagingTemplate.convertAndSend("/topic/hospitals/" + response.hospitalId() + "/dispatches", response);
+        // Route to the specific citizen who reported the incident
+        if (response.patientId() != null && !response.patientId().isBlank()) {
+            messagingTemplate.convertAndSend("/topic/patient/" + response.patientId() + "/dispatches", response);
+        }
     }
     public void updateAssignmentState(@NonNull String assignmentId, AssignmentState state) {
         DispatchAssignment assignment = dispatchAssignmentRepository.findById(assignmentId)

@@ -18,6 +18,7 @@ public record DispatchAssignmentResponse(
     AssignmentState state,
     String dispatchedAt,
     List<String> incidentTags,
-    AmbulanceRouteResponse route
+    AmbulanceRouteResponse route,
+    String patientId
 ) {
 }

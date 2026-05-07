@@ -13,11 +13,12 @@ public record Incident(
     Coordinates coordinates,
     String time,
     @DBRef
-    User reporter,      
+    User reporter,
     String type, // "urgent" | "normal"
     List<String> tags,
     String status,
-    int priority
+    int priority,
+    String citoyenId
 ) {
     // Custom withers or constructor logic can go here if needed
 }
