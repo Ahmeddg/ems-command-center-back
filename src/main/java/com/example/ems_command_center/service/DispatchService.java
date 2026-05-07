@@ -24,6 +24,12 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.springframework.data.mongodb.core.FindAndModifyOptions;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
+
 @Service
 public class DispatchService {
 
@@ -35,6 +41,7 @@ public class DispatchService {
     private final UserRepository userRepository;
     private final DispatchAssignmentRepository dispatchAssignmentRepository;
     private final SimpMessagingTemplate messagingTemplate;
+    private final MongoTemplate mongoTemplate;
 
     public DispatchService(
         VehicleRepository vehicleRepository,
@@ -42,7 +49,8 @@ public class DispatchService {
         FacilityRepository facilityRepository,
         UserRepository userRepository,
         DispatchAssignmentRepository dispatchAssignmentRepository,
-        SimpMessagingTemplate messagingTemplate
+        SimpMessagingTemplate messagingTemplate,
+        MongoTemplate mongoTemplate
     ) {
         this.vehicleRepository = vehicleRepository;
         this.incidentRepository = incidentRepository;
@@ -50,6 +58,7 @@ public class DispatchService {
         this.userRepository = userRepository;
         this.dispatchAssignmentRepository = dispatchAssignmentRepository;
         this.messagingTemplate = messagingTemplate;
+        this.mongoTemplate = mongoTemplate;
     }
 
     public List<Vehicle> getAvailableAmbulances() {
@@ -108,16 +117,21 @@ public class DispatchService {
             ? "Dispatch Center"
             : request.dispatcher().trim();
 
-        Vehicle dispatchedVehicle = new Vehicle(
-            vehicle.id(),
-            vehicle.name(),
-            "busy",
-            vehicle.type(),
-            vehicle.location(),
-            vehicle.crew(),
-            dispatchedAt,
-            vehicle.equipment()
+        Query query = new Query(Criteria.where("id").is(vehicle.id()).and("status").is("available"));
+        Update update = new Update()
+            .set("status", "busy")
+            .set("lastUpdate", dispatchedAt);
+
+        Vehicle dispatchedVehicle = mongoTemplate.findAndModify(
+            query,
+            update,
+            FindAndModifyOptions.options().returnNew(true),
+            Vehicle.class
         );
+
+        if (dispatchedVehicle == null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Ambulance " + vehicle.id() + " is not available");
+        }
 
         List<String> updatedTags = new ArrayList<>(incident.tags() == null ? List.of() : incident.tags());
         updatedTags.removeIf(tag -> tag != null && (
@@ -146,7 +160,6 @@ public class DispatchService {
             incident.priority()
         );
 
-        vehicleRepository.save(dispatchedVehicle);
         incidentRepository.save(updatedIncident);
 
         DispatchAssignment savedAssignment = dispatchAssignmentRepository.save(new DispatchAssignment(

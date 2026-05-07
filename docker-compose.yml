@@ -16,7 +16,7 @@ services:
       retries: 10
       start_period: 10s
     networks:
-      - ems-network
+      - camunda-platform
 
   mongo-express:
     image: mongo-express:latest
@@ -33,7 +33,7 @@ services:
       mongodb:
         condition: service_healthy
     networks:
-      - ems-network
+      - camunda-platform
 
   app:
     image: ems-backend:dev
@@ -48,7 +48,8 @@ services:
     environment:
       SPRING_DATA_MONGODB_URI: mongodb://mongodb:27017/ems_db
       SERVER_PORT: 8081
-      KEYCLOAK_JWK_SET_URI: ${KEYCLOAK_JWK_SET_URI:-http://host.docker.internal:8080/realms/ems-command-center/protocol/openid-connect/certs}
+      # Updated the Keycloak port to 18080!
+      KEYCLOAK_JWK_SET_URI: ${KEYCLOAK_JWK_SET_URI:-http://host.docker.internal:18080/auth/realms/camunda-platform/protocol/openid-connect/certs}
       KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-ems-command-center-backend}
     depends_on:
       mongodb:
@@ -60,13 +61,197 @@ services:
       retries: 10
       start_period: 30s
     networks:
-      - ems-network
+      - camunda-platform
+
+  orchestration:
+    image: camunda/camunda:${CAMUNDA_VERSION}
+    container_name: orchestration
+    ports:
+      - "26500:26500"
+      - "9600:9600"
+      - "8080:8080"
+    environment:
+      CAMUNDA_SECURITY_AUTHENTICATION_OIDC_CLIENTID: ${ORCHESTRATION_CLIENT_ID}
+      CAMUNDA_SECURITY_AUTHENTICATION_OIDC_CLIENTSECRET: ${ORCHESTRATION_CLIENT_SECRET}
+      CAMUNDA_SECURITY_AUTHENTICATION_OIDC_AUDIENCES_0: orchestration
+      CAMUNDA_SECURITY_AUTHENTICATION_OIDC_AUDIENCES_1: orchestration-api
+      CAMUNDA_SECURITY_AUTHENTICATION_OIDC_AUDIENCES_2: web-modeler-api
+      CAMUNDA_SECURITY_AUTHENTICATION_OIDC_AUTHORIZATIONURI: http://${HOST}:18080/auth/realms/camunda-platform/protocol/openid-connect/auth
+      CAMUNDA_SECURITY_AUTHENTICATION_OIDC_TOKENURI: http://${KEYCLOAK_HOST}:18080/auth/realms/camunda-platform/protocol/openid-connect/token
+      CAMUNDA_SECURITY_AUTHENTICATION_OIDC_JWKSETURI: http://${KEYCLOAK_HOST}:18080/auth/realms/camunda-platform/protocol/openid-connect/certs
+      CAMUNDA_SECURITY_AUTHENTICATION_OIDC_REDIRECTURI: http://${HOST}:8080/sso-callback
+      CAMUNDA_SECURITY_AUTHENTICATION_OIDC_USERNAMECLAIM: preferred_username
+      CAMUNDA_SECURITY_AUTHENTICATION_OIDC_CLIENTIDCLAIM: client_id
+      ZEEBE_BROKER_GATEWAY_SECURITY_AUTHENTICATION_IDENTITY_ISSUERBACKENDURL: http://${KEYCLOAK_HOST}:18080/auth/realms/camunda-platform
+      CAMUNDA_IDENTITY_ISSUERBACKENDURL: http://${KEYCLOAK_HOST}:18080/auth/realms/camunda-platform
+      CAMUNDA_IDENTITY_BASEURL: http://identity:8084
+      CAMUNDA_IDENTITY_AUDIENCE: orchestration-api
+      JAVA_TOOL_OPTIONS: "-Xms512m -Xmx512m"
+    env_file:
+      - path: .env
+        required: true
+    restart: on-failure
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 10s bash -c ':> /dev/tcp/127.0.0.1/9600' || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    volumes:
+      - orchestration:/usr/local/zeebe/data
+      - "./.orchestration/application.yaml:/usr/local/camunda/config/application.yaml"
+    networks:
+      - camunda-platform
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
+  identity:
+    container_name: identity
+    image: camunda/identity:${CAMUNDA_IDENTITY_VERSION}
+    ports:
+      - "8084:8084"
+    environment:
+      # Force IPv4 to fix Java NIO HTTP client ClosedChannelException in Docker
+      JAVA_TOOL_OPTIONS: "-Djava.net.preferIPv4Stack=true"
+      IDENTITY_DATABASE_HOST: postgres
+      IDENTITY_DATABASE_PORT: 5432
+      IDENTITY_DATABASE_NAME: ${POSTGRES_DB}
+      IDENTITY_DATABASE_USERNAME: ${POSTGRES_USER}
+      IDENTITY_DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+      VALUES_KEYCLOAK_INIT_ORCHESTRATION_SECRET: ${ORCHESTRATION_CLIENT_SECRET}
+      VALUES_KEYCLOAK_INIT_CONSOLE_SECRET: ${CONSOLE_CLIENT_SECRET}
+      VALUES_KEYCLOAK_INIT_OPTIMIZE_SECRET: ${OPTIMIZE_CLIENT_SECRET}
+      VALUES_KEYCLOAK_INIT_CONNECTORS_SECRET: ${CONNECTORS_CLIENT_SECRET}
+      KEYCLOAK_ADMIN_USER: ${KEYCLOAK_ADMIN_USER}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      HOST: ${HOST}
+      KEYCLOAK_HOST: keycloak
+      RESOURCE_PERMISSIONS_ENABLED: ${RESOURCE_AUTHORIZATIONS_ENABLED}
+      CAMUNDA_IDENTITY_CLIENT_SECRET: ${CAMUNDA_IDENTITY_CLIENT_SECRET:-demo-identity-secret}
+      # Direct Spring Boot property overrides (highest priority)
+      KEYCLOAK_URL: http://keycloak:18080/auth
+      IDENTITY_AUTH_PROVIDER_ISSUER_URL: http://localhost:18080/auth/realms/camunda-platform
+      IDENTITY_AUTH_PROVIDER_BACKEND_URL: http://keycloak:18080/auth/realms/camunda-platform
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:18080/auth/realms/camunda-platform
+      # Force Spring property resolution for identity.authProvider.backend-url
+      IDENTITY_AUTHPROVIDER_BACKENDURL: http://keycloak:18080/auth/realms/camunda-platform
+      IDENTITY_AUTHPROVIDER_ISSUERURL: http://localhost:18080/auth/realms/camunda-platform
+      management.endpoints.web.exposure.include: health,configprops
+      management.endpoint.health.probes.enabled: true
+      MANAGEMENT_ENDPOINT_CONFIGPROPS_SHOW_VALUES: ALWAYS
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--tries=1", "--spider", "http://localhost:8082/actuator/health"]
+      interval: 5s
+      timeout: 15s
+      retries: 30
+      start_period: 60s
+    restart: on-failure
+    volumes:
+      - keycloak-theme:/app/keycloak-theme
+      - "./.identity/application.yaml:/app/application.yaml"
+    networks:
+      - camunda-platform
+      - identity-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      keycloak:
+        condition: service_healthy
+
+  postgres:
+    container_name: postgres
+    image: postgres:${POSTGRES_VERSION}
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    restart: on-failure
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    networks:
+      - identity-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  keycloak:
+    container_name: keycloak
+    image: bitnamilegacy/keycloak:${KEYCLOAK_SERVER_VERSION}
+    volumes:
+      - keycloak-theme:/opt/bitnami/keycloak/themes/identity
+    ports:
+      - "18080:18080"
+    environment:
+      KEYCLOAK_HTTP_PORT: 18080
+      KEYCLOAK_HTTP_RELATIVE_PATH: /auth
+      KEYCLOAK_DATABASE_HOST: postgres
+      KEYCLOAK_DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+      KEYCLOAK_ADMIN_USER: ${KEYCLOAK_ADMIN_USER}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+    restart: on-failure
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:18080/auth"]
+      interval: 30s
+      timeout: 15s
+      retries: 5
+      start_period: 30s
+    networks:
+      - camunda-platform
+      - identity-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:${ELASTIC_VERSION}
+    container_name: elasticsearch
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    environment:
+      - bootstrap.memory_lock=true
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - cluster.routing.allocation.disk.threshold_enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      # Single-node: force 0 replicas to avoid yellow status
+      - indices.breaker.total.use_real_memory=false
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    restart: on-failure
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cat/health | grep -qE 'green|yellow'"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    volumes:
+      - elastic:/usr/share/elasticsearch/data
+    networks:
+      - camunda-platform
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
 volumes:
   mongo_data:
     name: ems_mongo_data
+  orchestration:
+  elastic:
+  postgres:
+  keycloak-theme:
 
 networks:
-  ems-network:
-    name: ems-network
-    driver: bridge
+  camunda-platform:
+  identity-network:

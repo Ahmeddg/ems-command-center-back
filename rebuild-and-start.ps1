@@ -1,4 +1,4 @@
-#docker run -d --name keycloak -p 8080:8080 -e KEYCLOAK_ADMIN=admin -e KEYCLOAK_ADMIN_PASSWORD=admin -v keycloak_data:/opt/keycloak/data quay.io/keycloak/keycloak:latest start-dev
+#docker run -d --name keycloak -p 8002:8002 -e KEYCLOAK_ADMIN=admin -e KEYCLOAK_ADMIN_PASSWORD=admin -v keycloak_data:/opt/keycloak/data quay.io/keycloak/keycloak:latest start-dev
 
 # Complete rebuild and restart script
 # Rebuilds Maven project, Docker image, and docker-compose stack

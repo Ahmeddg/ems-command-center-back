@@ -140,7 +140,7 @@ public class UserSyncService {
         Object resourceAccess = jwt.getClaims().get("resource_access");
         if (resourceAccess instanceof Map<?, ?> resourceAccessMap) {
             // Try common client IDs
-            for (String clientId : List.of("ems-command-center", "ems-command-center-back", "account")) {
+            for (String clientId : List.of("ems-command-center-backend", "account")) {
                 Object clientAccess = resourceAccessMap.get(clientId);
                 if (clientAccess instanceof Map<?, ?> clientAccessMap) {
                     Object roles = clientAccessMap.get("roles");

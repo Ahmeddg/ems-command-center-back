@@ -11,7 +11,7 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:8080/realms/ems-command-center/protocol/openid-connect/certs}
+          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:18080/auth/realms/camunda-platform/protocol/openid-connect/certs}
 
 server:
   port: ${SERVER_PORT:8081}
